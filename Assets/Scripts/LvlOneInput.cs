@@ -8,15 +8,41 @@ public class LvlOneInput : MonoBehaviour
     public TextMeshProUGUI pedalSpeedInputText;
     public GyroscopeData gsData;
     public LvlOneDataGenerator dataGenerator;
+    // public QuestionManager qManager;
     public HoldButton pedalHoldButton;
     public GameObject pedalButton, redoButton, submitButton, canvas;
     private bool pedalPressed;
-    float pedalSpeedInput, startingYAttitude, startingZAttitude, greatestAnswer = 20;
-    bool firstTouch = true;
+    float answer, pedalSpeedInput, startingYAttitude, startingZAttitude, greatestAnswer = 20;
+    private int stage = 0;
+    bool firstTouch = true, answered = false;
+
     // Start is called before the first frame update
     void Start()
     {
         
+    }
+
+    // Check for the value corresponding to the stage
+    void OnEnable()
+    {
+        answered = false;
+        // get stage
+        // stage = qManager.stage;
+        switch(stage)
+        {
+            case 0:
+                answer = (float)dataGenerator.v2;
+                break;
+            case 1:
+                answer = (float)dataGenerator.v1;
+                break;
+            case 2:
+                answer = (float)dataGenerator.v0;
+                break;
+            default:
+                answer = 0;
+                break;
+        }
     }
 
     // Update is called once per frame
@@ -33,10 +59,11 @@ public class LvlOneInput : MonoBehaviour
             }
             else
             {
+                float randCenter = (float)answer + UnityEngine.Random.Range(-0.5f, 0.5f);
                 n = ((startingYAttitude - gsData.attitude.y) / 4);
-                div = (float)(n / dataGenerator.meanV0);
+                div = (float)(n / randCenter);
                 pow = (float)Math.Pow((double)(div - 1), 3.0);
-                pedalSpeedInput = (pow + 1) * (float)dataGenerator.meanV0;
+                pedalSpeedInput = (pow + 1) * randCenter;
 
                 // Math.Pow((double)((((startingYAttitude - gsData.attitude.y) / 4) / dataGenerator.maxV0) - 1), 3.0)
 
@@ -47,9 +74,13 @@ public class LvlOneInput : MonoBehaviour
             {
                 pedalSpeedInputText.color = Color.red;
             }
+            else if(pedalSpeedInput > answer*2)
+            {
+                pedalSpeedInputText.color = Color.red;
+            }
             else
             {
-                pedalSpeedInputText.color = Color.white;
+                pedalSpeedInputText.color = Color.LerpUnclamped(Color.blue, Color.red, pedalSpeedInput/(answer*2));
             }
             pedalSpeedInputText.text = $"{pedalSpeedInput:#0.00}";
         }
@@ -76,14 +107,36 @@ public class LvlOneInput : MonoBehaviour
 
     public void CheckResults()
     {
-        if(pedalSpeedInput > (dataGenerator.v0 - 0.1f) && pedalSpeedInput < (dataGenerator.v0 + 0.1f))
+        /*
+            0 -> correct
+            1 -> less than
+            2 -> more than
+        */
+        int userAnswer;
+        if(pedalSpeedInput > (answer - 0.1f) && pedalSpeedInput < (answer + 0.1f))
         {
+            // Correct
+            userAnswer = 0;
             pedalSpeedInputText.color = Color.green;
         }
+        else if(pedalSpeedInput <= (answer - 0.1f))
+        {
+            // Incorrect (less than)
+            userAnswer = 1;
+        }
+        else
+        {
+            userAnswer = 2;
+        }
+        // Send values before kms
+        qManager.userAnswer = userAnswer;
+        answered = true;
+        // kms
+        canvas.SetActive(false);
     }
 
     public void Leave()
     {
-
+        canvas.SetActive(false);
     }
 }
